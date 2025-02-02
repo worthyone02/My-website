@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Companies & Buckets</title>
+    <script type="module" src="app.js"></script>
+    <script src="https://unpkg.com/tabulator-tables/dist/js/tabulator.min.js"></script>
+    <link href="https://unpkg.com/tabulator-tables/dist/css/tabulator.min.css" rel="stylesheet">
+</head>
+<body>
+    <h2>Companies</h2>
+    <input type="text" id="companyName" placeholder="Company Name">
+    <input type="text" id="nseCode" placeholder="NSE Code">
+    <button onclick="addCompany()">Add Company</button>
+    
+    <div id="companies-table"></div>
+</body>
+</html>
