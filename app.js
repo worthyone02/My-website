@@ -26,7 +26,7 @@ document.getElementById("company-form").addEventListener("submit", function(even
         fetchCompanies(); // Refresh the list of companies
         document.getElementById("company-name").value = "";
         document.getElementById("company-nse-code").value = "";
-    });
+    }).catch(error => console.log("Error adding company:", error));
 });
 
 // Add a new bucket to Firestore
@@ -40,7 +40,7 @@ document.getElementById("bucket-form").addEventListener("submit", function(event
     }).then(() => {
         fetchBuckets(); // Refresh the list of buckets
         document.getElementById("bucket-name").value = "";
-    });
+    }).catch(error => console.log("Error adding bucket:", error));
 });
 
 // Fetch and display companies
@@ -52,7 +52,7 @@ function fetchCompanies() {
             companiesList += `<li>${company.name} (${company.nseCode})</li>`;
         });
         document.getElementById("companies-list").innerHTML = companiesList;
-    });
+    }).catch(error => console.log("Error fetching companies:", error));
 }
 
 // Fetch and display buckets
@@ -64,7 +64,7 @@ function fetchBuckets() {
             bucketsList += `<li>${bucket.name}</li>`;
         });
         document.getElementById("buckets-list").innerHTML = bucketsList;
-    });
+    }).catch(error => console.log("Error fetching buckets:", error));
 }
 
 // Log changes to Firebase (when bucket data changes)
@@ -74,7 +74,7 @@ function logBucketChange(bucketId, action, companyData) {
         action: action,
         companyData: companyData,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
+    }).catch(error => console.log("Error logging bucket change:", error));
 }
 
 // Display recent changes in the dashboard
@@ -91,7 +91,7 @@ function displayChanges() {
             </tr>`;
         });
         document.getElementById("change-log").innerHTML = changeLogs;
-    });
+    }).catch(error => console.log("Error fetching changes:", error));
 }
 
 // Function to track the top common companies across all buckets
@@ -101,35 +101,3 @@ function updateCommonCompanies() {
 
         snapshot.forEach((doc) => {
             db.collection("buckets").doc(doc.id).collection("companies").get().then((companySnapshot) => {
-                companySnapshot.forEach((companyDoc) => {
-                    const company = companyDoc.data();
-                    const companyKey = `${company.name} (${company.nseCode})`;
-                    companyCount[companyKey] = (companyCount[companyKey] || 0) + 1;
-                });
-                displayTopCommonCompanies(companyCount);
-            });
-        });
-    });
-}
-
-// Display the top 30 common companies
-function displayTopCommonCompanies(companyCount) {
-    let sortedCompanies = Object.entries(companyCount).sort((a, b) => b[1] - a[1]);
-    let topCompanies = sortedCompanies.slice(0, 30);
-    let companyRows = "";
-    topCompanies.forEach((company) => {
-        companyRows += `<tr>
-            <td>${company[0]}</td>
-            <td>${company[1]}</td>
-        </tr>`;
-    });
-    document.getElementById("common-companies-list").innerHTML = companyRows;
-}
-
-// Load data when the page is loaded
-window.onload = function() {
-    fetchCompanies();
-    fetchBuckets();
-    displayChanges();
-    updateCommonCompanies();
-};
