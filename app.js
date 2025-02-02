@@ -1,126 +1,135 @@
-// Import Firebase
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
-
-// Your Firebase Config
+// Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDJ45GasB32NOx2sqH1Hrt26eTgUvTKzAQ",
-    authDomain: "project-1-15aa1.firebaseapp.com",
-    projectId: "project-1-15aa1",
-    storageBucket: "project-1-15aa1.firebasestorage.app",
-    messagingSenderId: "515442479036",
-    appId: "1:515442479036:web:181ba2a7bdab2919a4a5b9"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
-// Function to add a company
-window.addCompany = async function () {
-    let name = document.getElementById("companyName").value;
-    let code = document.getElementById("nseCode").value;
-
-    if (name && code) {
-        try {
-            await addDoc(collection(db, "companies"), { name, code });
-            alert("Company Added!");
-            loadCompanies();
-        } catch (error) {
-            console.error("Error adding company:", error);
-        }
-    }
-};
-
-// Function to load companies into Tabulator table
-async function loadCompanies() {
-    const querySnapshot = await getDocs(collection(db, "companies"));
-    let companies = [];
-    querySnapshot.forEach(doc => {
-        companies.push({ id: doc.id, ...doc.data() });
+// Add a new company to Firestore
+document.getElementById("company-form").addEventListener("submit", function(event) {
+    event.preventDefault();
+    
+    const companyName = document.getElementById("company-name").value;
+    const companyNSECode = document.getElementById("company-nse-code").value;
+    
+    db.collection("companies").add({
+        name: companyName,
+        nseCode: companyNSECode
+    }).then(() => {
+        fetchCompanies(); // Refresh the list of companies
+        document.getElementById("company-name").value = "";
+        document.getElementById("company-nse-code").value = "";
     });
+});
 
-    new Tabulator("#companies-table", {
-        data: companies,
-        layout: "fitColumns",
-        columns: [
-            { title: "Company Name", field: "name" },
-            { title: "NSE Code", field: "code" }
-        ]
+// Add a new bucket to Firestore
+document.getElementById("bucket-form").addEventListener("submit", function(event) {
+    event.preventDefault();
+    
+    const bucketName = document.getElementById("bucket-name").value;
+    
+    db.collection("buckets").add({
+        name: bucketName
+    }).then(() => {
+        fetchBuckets(); // Refresh the list of buckets
+        document.getElementById("bucket-name").value = "";
+    });
+});
+
+// Fetch and display companies
+function fetchCompanies() {
+    db.collection("companies").get().then((snapshot) => {
+        let companiesList = "";
+        snapshot.forEach((doc) => {
+            const company = doc.data();
+            companiesList += `<li>${company.name} (${company.nseCode})</li>`;
+        });
+        document.getElementById("companies-list").innerHTML = companiesList;
     });
 }
 
-// Load companies when the page loads
-window.onload = loadCompanies;
-// Function to log changes to the Firebase Firestore (when bucket data changes)
+// Fetch and display buckets
+function fetchBuckets() {
+    db.collection("buckets").get().then((snapshot) => {
+        let bucketsList = "";
+        snapshot.forEach((doc) => {
+            const bucket = doc.data();
+            bucketsList += `<li>${bucket.name}</li>`;
+        });
+        document.getElementById("buckets-list").innerHTML = bucketsList;
+    });
+}
+
+// Log changes to Firebase (when bucket data changes)
 function logBucketChange(bucketId, action, companyData) {
-   const db = firebase.firestore();
-   db.collection("bucketChanges").add({
-     bucketId: bucketId,
-     action: action,
-     companyData: companyData,
-     timestamp: firebase.firestore.FieldValue.serverTimestamp()
-   });
+    db.collection("bucketChanges").add({
+        bucketId: bucketId,
+        action: action,
+        companyData: companyData,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
 }
 
 // Display recent changes in the dashboard
 function displayChanges() {
-   const db = firebase.firestore();
-   db.collection("bucketChanges").orderBy("timestamp", "desc").limit(5).get().then((snapshot) => {
-     let changeLogs = "";
-     snapshot.forEach((doc) => {
-       const change = doc.data();
-       changeLogs += `<tr>
-                       <td>${change.bucketId}</td>
-                       <td>${change.action}</td>
-                       <td>${JSON.stringify(change.companyData)}</td>
-                       <td>${new Date(change.timestamp.seconds * 1000).toLocaleString()}</td>
-                     </tr>`;
-     });
-     document.getElementById("change-log").innerHTML = changeLogs;
-   });
+    db.collection("bucketChanges").orderBy("timestamp", "desc").limit(5).get().then((snapshot) => {
+        let changeLogs = "";
+        snapshot.forEach((doc) => {
+            const change = doc.data();
+            changeLogs += `<tr>
+                <td>${change.bucketId}</td>
+                <td>${change.action}</td>
+                <td>${JSON.stringify(change.companyData)}</td>
+                <td>${new Date(change.timestamp.seconds * 1000).toLocaleString()}</td>
+            </tr>`;
+        });
+        document.getElementById("change-log").innerHTML = changeLogs;
+    });
 }
 
 // Function to track the top common companies across all buckets
 function updateCommonCompanies() {
-   const db = firebase.firestore();
-   db.collection("buckets").get().then((snapshot) => {
-     let companyCount = {};
+    db.collection("buckets").get().then((snapshot) => {
+        let companyCount = {};
 
-     snapshot.forEach((doc) => {
-       const bucket = doc.data();
-       db.collection("buckets").doc(doc.id).collection("companies").get().then((companySnapshot) => {
-         companySnapshot.forEach((companyDoc) => {
-           const company = companyDoc.data();
-           const companyKey = company.name + " (" + company.nseCode + ")";
-           if (companyCount[companyKey]) {
-             companyCount[companyKey]++;
-           } else {
-             companyCount[companyKey] = 1;
-           }
-         });
-         displayTopCommonCompanies(companyCount);
-       });
-     });
-   });
+        snapshot.forEach((doc) => {
+            db.collection("buckets").doc(doc.id).collection("companies").get().then((companySnapshot) => {
+                companySnapshot.forEach((companyDoc) => {
+                    const company = companyDoc.data();
+                    const companyKey = `${company.name} (${company.nseCode})`;
+                    companyCount[companyKey] = (companyCount[companyKey] || 0) + 1;
+                });
+                displayTopCommonCompanies(companyCount);
+            });
+        });
+    });
 }
 
 // Display the top 30 common companies
 function displayTopCommonCompanies(companyCount) {
-   let sortedCompanies = Object.entries(companyCount).sort((a, b) => b[1] - a[1]);
-   let topCompanies = sortedCompanies.slice(0, 30);
-   let companyRows = "";
-   topCompanies.forEach((company) => {
-     companyRows += `<tr>
-                       <td>${company[0]}</td>
-                       <td>${company[1]}</td>
-                     </tr>`;
-   });
-   document.getElementById("common-companies-list").innerHTML = companyRows;
+    let sortedCompanies = Object.entries(companyCount).sort((a, b) => b[1] - a[1]);
+    let topCompanies = sortedCompanies.slice(0, 30);
+    let companyRows = "";
+    topCompanies.forEach((company) => {
+        companyRows += `<tr>
+            <td>${company[0]}</td>
+            <td>${company[1]}</td>
+        </tr>`;
+    });
+    document.getElementById("common-companies-list").innerHTML = companyRows;
 }
 
 // Load data when the page is loaded
 window.onload = function() {
-   displayChanges();  // Load recent changes
-   updateCommonCompanies();  // Load top 30 common companies
+    fetchCompanies();
+    fetchBuckets();
+    displayChanges();
+    updateCommonCompanies();
 };
